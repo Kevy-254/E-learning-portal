@@ -1,0 +1,160 @@
+:root {
+    --navy: #003366;
+    --gold: #b38f00;
+    --light: #f4f7f6;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--light);
+}
+
+/* Navbar */
+.navbar {
+    background: var(--navy);
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo span { color: var(--gold); font-weight: bold; }
+
+/* Modified Auth Container to a Grid Layout */
+#auth-container {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr; /* Left side (News) is wider than Right (Login) */
+    gap: 40px;
+    align-items: center;
+    min-height: 85vh;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Right Side: Login Card */
+.login-card {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    width: 100%;
+    text-align: center;
+}
+
+.login-card input, .login-card select {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    display: block;
+    box-sizing: border-box;
+}
+
+/* Left Side: News Page Styling */
+.news-section {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.news-section h2 {
+    color: var(--navy);
+    border-bottom: 3px solid var(--gold);
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+.news-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    transition: background 0.3s;
+}
+
+.news-item:hover {
+    background: #fafafa;
+}
+
+.news-item h4 {
+    margin: 0 0 5px 0;
+    color: var(--navy);
+}
+
+.news-item p {
+    margin: 0;
+    font-size: 14px;
+    color: #555;
+    line-height: 1.4;
+}
+
+.news-item small {
+    color: #999;
+}
+
+/* Standard Buttons */
+.btn-main {
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+}
+
+.btn-main:hover { background: #002244; }
+
+/* Layout after login */
+.layout { display: flex; }
+.sidebar {
+    width: 250px;
+    background: white;
+    height: calc(100vh - 60px);
+    border-right: 1px solid #ddd;
+    padding: 20px;
+}
+
+.content { flex: 1; padding: 30px; }
+
+.side-link {
+    padding: 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin-bottom: 5px;
+}
+
+.side-link.active { background: var(--navy); color: white; }
+
+/* Grid for Units & Admin Cards */
+.unit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.info-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Admin News Textarea */
+#news-content {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: inherit;
+    resize: vertical;
+}

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UoE E-Learning Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">UoE <span>E-Learning</span></div>
+        <div class="user-nav">
+            <div id="staff-toggle-area">
+                <select id="role">
+                    <option value="student">Student Access</option>
+                    <option value="lecturer">Lecturer Access</option>
+                    <option value="admin">Admin Access</option>
+                </select>
+            </div>
+            <button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
+        </div>
+    </nav>
+
+    <div class="layout">
+        <aside id="sidebar" class="sidebar" style="display:none;">
+            <div class="side-link active" id="side-dash" onclick="showDashboard()">🏠 Dashboard</div>
+            <div class="side-link" id="side-catalog" onclick="showCatalog()">🌐 Site Home / Catalog</div>
+            <div class="side-link" onclick="alert('Profile Settings coming soon')">⚙️ Profile</div>
+        </aside>
+
+        <main class="content">
+            <div id="auth-container" class="login-screen">
+                <div class="login-card">
+                    <h2>Portal Access</h2>
+                    <input type="text" id="regNum" placeholder="Reg Number / Staff ID">
+                    <input type="password" id="pass" placeholder="Password">
+                    <button class="btn-main" onclick="login()">Sign In</button>
+                </div>
+            </div>
+
+            <div id="global-search" style="display:none; margin-bottom: 20px;">
+                <input type="text" id="unitSearch" placeholder="🔍 Search units..." onkeyup="handleSearch()">
+            </div>
+
+            <div id="admin-view" style="display:none;">
+                <div class="hero-banner" style="background:#b38f00; color:#001f3f;">
+                    <h1>Admin Control Panel</h1>
+                    <p>Manage courses, staff credentials, and student accounts.</p>
+                </div>
+                
+                <div class="course-body-layout">
+                    <div class="main-resources">
+                        <div class="info-card" style="margin-bottom: 20px;">
+                            <h3>👤 Create New User</h3>
+                            <input type="text" id="new-user-id" placeholder="Reg Number (e.g. LEC01)">
+                            <input type="password" id="new-user-pass" placeholder="Default Password">
+                            <select id="new-user-role">
+                                <option value="student">Student</option>
+                                <option value="lecturer">Lecturer</option>
+                            </select>
+                            <button class="btn-main" onclick="adminCreateUser()">Register User</button>
+                        </div>
+
+                        <div class="info-card">
+                            <h3>🔑 Reset User Password</h3>
+                            <input type="text" id="reset-user-id" placeholder="User ID to Reset">
+                            <input type="password" id="reset-user-pass" placeholder="New Password">
+                            <button class="btn-main" style="background:#dc3545;" onclick="adminResetPassword()">Update Password</button>
+                        </div>
+                    </div>
+
+                    <div class="course-sidebar">
+                        <div class="info-card" style="margin-bottom: 20px;">
+                            <h3>📚 Create Course Unit</h3>
+                            <input type="text" id="admin-unit-code" placeholder="Code (e.g. COMP101)">
+                            <input type="text" id="admin-unit-name" placeholder="Unit Name">
+                            <button class="btn-main" onclick="adminCreateUnit()">Create Unit</button>
+                        </div>
+                        <div class="info-card">
+                            <h3>👨‍🏫 Assign Staff</h3>
+                            <select id="admin-unit-select"></select>
+                            <input type="text" id="admin-staff-id" placeholder="Lecturer Staff ID">
+                            <button class="btn-main" onclick="adminAssignLecturer()">Assign Lecturer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dashboard-view" style="display:none;">
+                <div class="hero-banner">
+                    <h1 id="dash-title">My Courses</h1>
+                    <p>Select a unit to manage or access resources.</p>
+                </div>
+                <div id="enrolled-list" class="unit-grid"></div>
+            </div>
+
+            <div id="catalog-view" style="display:none;">
+                <h2 class="section-title">University Unit Directory</h2>
+                <div id="catalog-list" class="unit-grid"></div>
+            </div>
+
+            <div id="course-details-view" style="display:none;">
+                <button class="btn-back" onclick="showDashboard()">← Back</button>
+                <div class="course-header">
+                    <h1 id="cv-name">Unit Name</h1>
+                    <p id="cv-code">Code</p>
+                </div>
+                <div class="course-body-layout">
+                    <div class="main-resources">
+                        <h3>📚 Resources</h3>
+                        <div id="cv-materials"></div>
+                        <div id="lecturer-upload-zone" style="display:none;" class="upload-box">
+                            <h4>Upload Material</h4>
+                            <input type="file" id="new-file-input">
+                            <button class="btn-main" style="background:#28a745;" onclick="handleUpload()">Publish</button>
+                        </div>
+                    </div>
+                    <div class="course-sidebar">
+                        <div class="info-card">
+                            <h4>Unit Options</h4>
+                            <div id="course-actions"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
