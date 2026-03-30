@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Details</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">UoE <span>E-Learning</span></div>
+        <div class="course-nav">
+            <button class="btn-outline" onclick="goBack()">Back</button>
+            <button id="logoutBtn" class="btn-outline" onclick="logout()" style="display:none;">Logout</button>
+        </div>
+    </nav>
+
+    <main class="content">
+        <section class="course-detail">
+            <div class="course-header">
+                <h1 id="course-title">Loading course...</h1>
+                <div id="course-meta" class="course-meta"></div>
+                <div id="course-enroll" class="course-enroll"></div>
+            </div>
+
+            <div id="course-files" class="course-files"></div>
+
+            <div id="upload-panel" class="info-card upload-panel" style="display:none;">
+                <h3>Upload Material</h3>
+                <input type="file" id="file-input">
+                <button class="btn-main" onclick="uploadFile()">Upload</button>
+                <p class="muted">Documents and videos are supported.</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="course.js"></script>
+</body>
+</html>

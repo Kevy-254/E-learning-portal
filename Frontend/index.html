@@ -9,122 +9,119 @@
 <body>
     <nav class="navbar">
         <div class="logo">UoE <span>E-Learning</span></div>
-        <div class="user-nav">
-            <div id="staff-toggle-area">
-                <select id="role">
-                    <option value="student">Student Access</option>
-                    <option value="lecturer">Lecturer Access</option>
-                    <option value="admin">Admin Access</option>
-                </select>
-            </div>
-            <button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
-        </div>
+        <button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
     </nav>
 
     <div class="layout">
         <aside id="sidebar" class="sidebar" style="display:none;">
-            <div class="side-link active" id="side-dash" onclick="showDashboard()">🏠 Dashboard</div>
-            <div class="side-link" id="side-catalog" onclick="showCatalog()">🌐 Site Home / Catalog</div>
-            <div class="side-link" onclick="alert('Profile Settings coming soon')">⚙️ Profile</div>
+            <div id="side-dashboard" class="side-link active" onclick="showDashboard()">🏠 Dashboard</div>
+            <div id="side-catalog" class="side-link" onclick="showCatalog()">🌐 Catalog</div>
         </aside>
 
         <main class="content">
-            <div id="auth-container" class="login-screen">
+            <section id="landing" class="landing">
+                <div class="landing-content">
+                    <div id="notice-bar" class="notice-bar" data-default="Now Enrolling: Computer Science, Information Systems, Data Science, Business IT, and Cybersecurity">Now Enrolling: Computer Science, Information Systems, Data Science, Business IT, and Cybersecurity</div>
+                    <div class="landing-hero">
+                        <div class="hero-copy">
+                            <h1>Welcome to the UoE E-Learning Platform</h1>
+                            <p>Access your courses, announcements, and learning materials in one place. Choose your portal to continue.</p>
+                            <div class="role-buttons">
+                                <button class="btn-outline" onclick="quickLogin('student')">Student Login</button>
+                                <button class="btn-outline" onclick="quickLogin('lecturer')">Lecturer Login</button>
+                                <button class="btn-outline" onclick="quickLogin('admin')">Admin Login</button>
+                            </div>
+                        </div>
+                        <div class="hero-card">
+                            <h3>Courses Offered</h3>
+                            <ul class="course-list">
+                                <li>Computer Science</li>
+                                <li>Information Systems</li>
+                                <li>Data Science &amp; Analytics</li>
+                                <li>Business Information Technology</li>
+                                <li>Cybersecurity</li>
+                                <li>Software Engineering</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="landing-grid">
+                        <div class="info-card">
+                            <h3>Support &amp; Help</h3>
+                            <p>Need help accessing your account or courses? Our support team is ready to assist.</p>
+                            <p>Email: <a href="mailto:support@uoe.ac.ke">support@uoe.ac.ke</a></p>
+                            <p>Contacts: +254 700 000 000 | +254 711 000 000</p>
+                        </div>
+                        <div class="info-card">
+                            <h3>What You Can Do</h3>
+                            <p>Students enroll in units, lecturers upload materials, and admins manage users and assignments.</p>
+                            <p>Sign in to get started with your personalized dashboard.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <div id="auth-container" class="auth-grid">
+                <div class="news-section">
+                    <h2>Campus Announcements</h2>
+                    <div id="news-feed">Loading announcements...</div>
+                </div>
                 <div class="login-card">
                     <h2>Portal Access</h2>
-                    <input type="text" id="regNum" placeholder="Reg Number / Staff ID">
+                    <input type="text" id="regNum" placeholder="ID / Reg Number">
                     <input type="password" id="pass" placeholder="Password">
                     <button class="btn-main" onclick="login()">Sign In</button>
                 </div>
             </div>
 
-            <div id="global-search" style="display:none; margin-bottom: 20px;">
-                <input type="text" id="unitSearch" placeholder="🔍 Search units..." onkeyup="handleSearch()">
-            </div>
-
             <div id="admin-view" style="display:none;">
-                <div class="hero-banner" style="background:#b38f00; color:#001f3f;">
-                    <h1>Admin Control Panel</h1>
-                    <p>Manage courses, staff credentials, and student accounts.</p>
+                <h2>Admin Control Panel</h2>
+                <div class="unit-grid">
+                    <div class="info-card">
+                        <h3>Post Announcement</h3>
+                        <input type="text" id="news-title" placeholder="Headline">
+                        <textarea id="news-content" placeholder="Details..." rows="4"></textarea>
+                        <button class="btn-main" style="background:var(--gold);" onclick="postNews()">Post Announcement</button>
+                    </div>
+                    <div class="info-card">
+                        <h3>👤 User Management</h3>
+                        <input type="text" id="new-user-id" placeholder="New User ID">
+                        <input type="password" id="new-user-pass" placeholder="Password">
+                        <select id="new-user-role"><option value="student">Student</option><option value="lecturer">Lecturer</option></select>
+                        <button class="btn-main" onclick="adminCreateUser()">Create User</button>
+                    </div>
+                    <div class="info-card">
+                        <h3>Create Unit</h3>
+                        <input type="text" id="new-unit-code" placeholder="Unit Code">
+                        <input type="text" id="new-unit-name" placeholder="Unit Name">
+                        <button class="btn-main" onclick="adminCreateUnit()">Add Unit</button>
+                    </div>
+                    <div class="info-card">
+                        <h3>Assign Lecturer</h3>
+                        <select id="assign-unit"></select>
+                        <select id="assign-lecturer"></select>
+                        <button class="btn-main" onclick="assignLecturer()">Assign</button>
+                    </div>
                 </div>
-                
-                <div class="course-body-layout">
-                    <div class="main-resources">
-                        <div class="info-card" style="margin-bottom: 20px;">
-                            <h3>👤 Create New User</h3>
-                            <input type="text" id="new-user-id" placeholder="Reg Number (e.g. LEC01)">
-                            <input type="password" id="new-user-pass" placeholder="Default Password">
-                            <select id="new-user-role">
-                                <option value="student">Student</option>
-                                <option value="lecturer">Lecturer</option>
-                            </select>
-                            <button class="btn-main" onclick="adminCreateUser()">Register User</button>
-                        </div>
-
-                        <div class="info-card">
-                            <h3>🔑 Reset User Password</h3>
-                            <input type="text" id="reset-user-id" placeholder="User ID to Reset">
-                            <input type="password" id="reset-user-pass" placeholder="New Password">
-                            <button class="btn-main" style="background:#dc3545;" onclick="adminResetPassword()">Update Password</button>
-                        </div>
-                    </div>
-
-                    <div class="course-sidebar">
-                        <div class="info-card" style="margin-bottom: 20px;">
-                            <h3>📚 Create Course Unit</h3>
-                            <input type="text" id="admin-unit-code" placeholder="Code (e.g. COMP101)">
-                            <input type="text" id="admin-unit-name" placeholder="Unit Name">
-                            <button class="btn-main" onclick="adminCreateUnit()">Create Unit</button>
-                        </div>
-                        <div class="info-card">
-                            <h3>👨‍🏫 Assign Staff</h3>
-                            <select id="admin-unit-select"></select>
-                            <input type="text" id="admin-staff-id" placeholder="Lecturer Staff ID">
-                            <button class="btn-main" onclick="adminAssignLecturer()">Assign Lecturer</button>
-                        </div>
-                    </div>
+                <div class="admin-units">
+                    <h3>Units Overview</h3>
+                    <div id="admin-units-list" class="unit-grid"></div>
+                </div>
+                <div class="admin-announcements">
+                    <h3>Announcements Board</h3>
+                    <div id="admin-announcements-list" class="announcement-list"></div>
                 </div>
             </div>
 
             <div id="dashboard-view" style="display:none;">
-                <div class="hero-banner">
-                    <h1 id="dash-title">My Courses</h1>
-                    <p>Select a unit to manage or access resources.</p>
+                <h1 id="dash-title">My Courses</h1>
+                <div id="course-toolbar" class="course-toolbar">
+                    <input type="text" id="course-search" placeholder="Search courses by code or name">
                 </div>
                 <div id="enrolled-list" class="unit-grid"></div>
-            </div>
-
-            <div id="catalog-view" style="display:none;">
-                <h2 class="section-title">University Unit Directory</h2>
-                <div id="catalog-list" class="unit-grid"></div>
-            </div>
-
-            <div id="course-details-view" style="display:none;">
-                <button class="btn-back" onclick="showDashboard()">← Back</button>
-                <div class="course-header">
-                    <h1 id="cv-name">Unit Name</h1>
-                    <p id="cv-code">Code</p>
-                </div>
-                <div class="course-body-layout">
-                    <div class="main-resources">
-                        <h3>📚 Resources</h3>
-                        <div id="cv-materials"></div>
-                        <div id="lecturer-upload-zone" style="display:none;" class="upload-box">
-                            <h4>Upload Material</h4>
-                            <input type="file" id="new-file-input">
-                            <button class="btn-main" style="background:#28a745;" onclick="handleUpload()">Publish</button>
-                        </div>
-                    </div>
-                    <div class="course-sidebar">
-                        <div class="info-card">
-                            <h4>Unit Options</h4>
-                            <div id="course-actions"></div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </main>
     </div>
     <script src="app.js"></script>
 </body>
 </html>
+
+

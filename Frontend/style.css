@@ -8,9 +8,122 @@ body {
     margin: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--light);
+    background-image: url('assets/landing-bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
 }
 
-/* Navbar */
+/* --- 1. Landing Page Section --- */
+.landing {
+    position: relative;
+    margin: 0 0 40px;
+    padding: 30px 0 40px;
+    overflow: hidden;
+}
+
+.landing::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.65));
+    z-index: 0;
+}
+
+.landing-content {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.notice-bar {
+    background: rgba(255,247,214,0.94);
+    color: #5b4a00;
+    border: 1px solid #f0d98c;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.landing-hero {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 24px;
+    align-items: stretch;
+}
+
+.hero-copy {
+    background: rgba(0,0,0,0.45);
+    padding: 25px;
+    border-radius: 10px;
+    backdrop-filter: blur(5px);
+}
+
+.hero-copy h1 {
+    margin: 0 0 15px 0;
+    color: white;
+    font-size: 32px;
+}
+
+.hero-copy p { 
+    color: #f3f3f3; 
+    line-height: 1.6; 
+}
+
+.role-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid rgba(255,255,255,0.85);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.btn-outline:hover {
+    background: var(--navy);
+    border-color: var(--navy);
+}
+
+.hero-card {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.course-list {
+    margin: 0;
+    padding-left: 20px;
+    color: #444;
+}
+
+.landing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.landing a {
+    color: #ffd98a;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* --- 2. Navigation Bar --- */
 .navbar {
     background: var(--navy);
     color: white;
@@ -21,107 +134,84 @@ body {
     position: sticky;
     top: 0;
     z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .logo span { color: var(--gold); font-weight: bold; }
 
-/* Modified Auth Container to a Grid Layout */
+#logoutBtn {
+    background: var(--gold);
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    display: none; /* Controlled by app.js */
+}
+
+#logoutBtn:hover { background: #967700; }
+
+/* --- 3. Auth & Announcements Grid --- */
 #auth-container {
-    display: grid;
-    grid-template-columns: 1.2fr 0.8fr; /* Left side (News) is wider than Right (Login) */
+    display: none; /* Initially hidden until Role is selected */
+    grid-template-columns: 1.2fr 0.8fr;
     gap: 40px;
-    align-items: center;
-    min-height: 85vh;
+    align-items: start;
+    min-height: 80vh;
     max-width: 1100px;
-    margin: 0 auto;
+    margin: 40px auto;
     padding: 20px;
 }
 
-/* Right Side: Login Card */
-.login-card {
-    background: white;
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    width: 100%;
-    text-align: center;
-}
-
-.login-card input, .login-card select {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 15px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    display: block;
-    box-sizing: border-box;
-}
-
-/* Left Side: News Page Styling */
 .news-section {
     background: white;
     padding: 30px;
     border-radius: 12px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-    max-height: 600px;
-    overflow-y: auto;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
 }
 
-.news-section h2 {
-    color: var(--navy);
-    border-bottom: 3px solid var(--gold);
-    padding-bottom: 10px;
-    margin-top: 0;
+#news-feed {
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 10px;
 }
 
 .news-item {
     padding: 15px;
     border-bottom: 1px solid #eee;
-    transition: background 0.3s;
 }
 
-.news-item:hover {
-    background: #fafafa;
+.login-card {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    text-align: center;
 }
 
-.news-item h4 {
-    margin: 0 0 5px 0;
-    color: var(--navy);
-}
-
-.news-item p {
-    margin: 0;
-    font-size: 14px;
-    color: #555;
-    line-height: 1.4;
-}
-
-.news-item small {
-    color: #999;
-}
-
-/* Standard Buttons */
-.btn-main {
-    background: var(--navy);
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 6px;
-    cursor: pointer;
+.login-card input {
     width: 100%;
-    font-size: 16px;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-sizing: border-box;
 }
 
-.btn-main:hover { background: #002244; }
+/* --- 4. Main Layout & Sidebar --- */
+.layout { 
+    display: flex; 
+    width: 100%;
+}
 
-/* Layout after login */
-.layout { display: flex; }
-.sidebar {
+#sidebar {
     width: 250px;
     background: white;
-    height: calc(100vh - 60px);
+    min-height: calc(100vh - 60px);
     border-right: 1px solid #ddd;
     padding: 20px;
+    display: none; /* Controlled by app.js showDashboard() */
 }
 
 .content { flex: 1; padding: 30px; }
@@ -131,15 +221,31 @@ body {
     cursor: pointer;
     border-radius: 6px;
     margin-bottom: 5px;
+    transition: 0.2s;
 }
 
+.side-link:hover { background: #f0f0f0; }
 .side-link.active { background: var(--navy); color: white; }
 
-/* Grid for Units & Admin Cards */
+/* --- 5. Admin Panels & Cards --- */
 .unit-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
+}
+
+.course-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin: 10px 0 20px;
+}
+
+.course-toolbar input {
+    width: min(420px, 100%);
+    padding: 10px 12px;
+    border: 1px solid #d6d6d6;
+    border-radius: 6px;
+    font-size: 14px;
 }
 
 .info-card {
@@ -150,11 +256,125 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-/* Admin News Textarea */
-#news-content {
+.course-card {
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.course-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+}
+
+.info-card input, .info-card select, .info-card textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
     border: 1px solid #ddd;
     border-radius: 6px;
-    padding: 10px;
-    font-family: inherit;
-    resize: vertical;
+    box-sizing: border-box;
+}
+
+.btn-main {
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.btn-danger { background: #a62626; color: white; }
+
+.muted {
+    color: #666;
+    font-style: italic;
+}
+
+.course-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 10px;
+}
+
+.course-detail {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.course-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 8px 0 18px;
+    color: #333;
+    font-weight: 600;
+}
+
+.course-enroll {
+    margin-bottom: 20px;
+}
+
+.course-files {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.file-item {
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.file-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.file-info a {
+    color: var(--navy);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.file-info a:hover { text-decoration: underline; }
+
+.btn-small {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.upload-panel input {
+    margin-bottom: 10px;
+}
+
+.course-nav {
+    display: flex;
+    gap: 10px;
+}
+
+/* --- 6. Responsive Rules --- */
+@media (max-width: 900px) {
+    #auth-container { grid-template-columns: 1fr; }
+    .landing-hero { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+    .role-buttons { flex-direction: column; }
+    .btn-outline { width: 100%; }
+    .hero-copy h1 { font-size: 24px; }
+    .navbar { padding: 10px 15px; }
 }

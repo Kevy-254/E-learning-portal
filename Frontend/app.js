@@ -1,234 +1,549 @@
-const API = "http://localhost:5000/api";
-const BASE_URL = "http://localhost:5000";
-let allUnits = [];
-let currentOpenUnitId = null;
-let currentActiveView = 'dashboard';
+// --- DYNAMIC API DETECTION ---
+const DEFAULT_API_PORT = 5000;
+const API_HOST = window.location.hostname || 'localhost';
+const API_PORT = window.API_PORT || DEFAULT_API_PORT;
+const API_BASE_OVERRIDE = (window.API_BASE && String(window.API_BASE).trim()) || '';
+const API = API_BASE_OVERRIDE || `http://${API_HOST}:${API_PORT}/api`;
 
-// --- 1. VIEW CONTROLLERS ---
-function hideAll() {
-    const views = ['auth-container', 'dashboard-view', 'catalog-view', 'course-details-view', 'global-search', 'admin-view'];
-    views.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-    });
-    
-    ['side-dash', 'side-catalog'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.remove('active');
-    });
+let cachedUnits = [];
+let cachedLecturers = [];
+let cachedNews = [];
+let currentView = 'enrolled';
+let searchBound = false;
+
+function getSearchQuery() {
+    const input = document.getElementById('course-search');
+    return input ? input.value.trim().toLowerCase() : '';
 }
 
-// --- 2. AUTHENTICATION (LOGIN) ---
-async function login() {
-    const regNumInput = document.getElementById('regNum').value.trim(); 
-    const passwordInput = document.getElementById('pass').value;
-    const selectedRole = document.getElementById('role').value; 
+function matchesQuery(unit, query) {
+    if (!query) return true;
+    const code = String(unit.code || '').toLowerCase();
+    const name = String(unit.name || '').toLowerCase();
+    return code.includes(query) || name.includes(query);
+}
 
-    if (!regNumInput || !passwordInput) return alert("Please enter both ID and Password");
+// --- 1. Announcements Logic ---
+async function loadNews() {
+    try {
+        const res = await fetch(`${API}/news`);
+        if (!res.ok) throw new Error('News fetch failed');
+        cachedNews = await res.json();
+    } catch (err) {
+        console.error("News load failed:", err);
+        cachedNews = [];
+    }
+    renderNewsFeed();
+    renderNoticeBar();
+    renderAdminAnnouncements();
+}
+
+function renderNewsFeed() {
+    const feed = document.getElementById('news-feed');
+    if (!feed) return;
+    if (cachedNews.length === 0) {
+        feed.innerHTML = "<p>No recent updates.</p>";
+        return;
+    }
+    feed.innerHTML = cachedNews.map(n => `
+        <div class="news-item">
+            <h4>${n.title}</h4>
+            <p>${n.content}</p>
+            <small>${new Date(n.date).toLocaleDateString()}</small>
+        </div>
+    `).join('');
+}
+
+function renderNoticeBar() {
+    const noticeBar = document.getElementById('notice-bar');
+    if (!noticeBar) return;
+    const defaultNotice = noticeBar.dataset.default || "Welcome to UoE";
+    if (cachedNews.length > 0) {
+        const latest = cachedNews[0];
+        noticeBar.textContent = `Latest: ${latest.title}`;
+    } else {
+        noticeBar.textContent = defaultNotice;
+    }
+}
+
+// --- 2. Auth & Navigation ---
+function quickLogin(role) {
+    // Hide the landing hero
+    document.getElementById('landing').style.display = 'none';
+    // Show the login & news grid
+    const authContainer = document.getElementById('auth-container');
+    authContainer.style.display = 'grid'; 
+    
+    // Focus the input for better UX
+    document.getElementById('regNum').focus();
+    console.log(`Ready for ${role} login`);
+}
+
+async function login() {
+    const regNumber = document.getElementById('regNum').value.trim();
+    const password = document.getElementById('pass').value.trim();
 
     try {
         const res = await fetch(`${API}/auth/login`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ regNumber: regNumInput, password: passwordInput })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ regNumber, password })
         });
 
         const data = await res.json();
-
         if (res.ok) {
-            localStorage.setItem('userId', data.userId);
-            localStorage.setItem('regNum', data.regNumber);
-            localStorage.setItem('role', selectedRole); 
+            localStorage.setItem('role', data.role);
+            localStorage.setItem('regNum', data.regNumber || regNumber);
+            if (data.userId) localStorage.setItem('userId', data.userId);
             showDashboard();
         } else {
-            alert(data.error); 
+            alert(data.error || "Invalid credentials");
         }
     } catch (err) {
-        alert("Cannot connect to server. Ensure Backend is running.");
+        alert("Server is offline. Make sure Backend is running!");
     }
 }
 
-// --- 3. DASHBOARD LOGIC ---
-async function showDashboard() {
-    hideAll();
-    currentActiveView = 'dashboard';
-    const role = localStorage.getItem('role');
-    const userRegNum = localStorage.getItem('regNum');
+function setActiveSidebar(label) {
+    const links = Array.from(document.querySelectorAll('.side-link'));
+    links.forEach(l => l.classList.remove('active'));
+    const match = links.find(l => l.textContent.toLowerCase().includes(label));
+    if (match) match.classList.add('active');
+}
 
+function configureSidebarByRole(role) {
+    const catalogLink = document.getElementById('side-catalog');
+    if (catalogLink) {
+        catalogLink.style.display = role === 'student' ? 'block' : 'none';
+    }
+}
+
+function configureSearch(mode) {
+    const toolbar = document.getElementById('course-toolbar');
+    const input = document.getElementById('course-search');
+    if (!toolbar || !input) return;
+
+    if (mode === 'hide') {
+        toolbar.style.display = 'none';
+        return;
+    }
+
+    toolbar.style.display = 'flex';
+    input.value = '';
+    if (mode === 'catalog') {
+        input.placeholder = 'Search new courses by code or name';
+    } else if (mode === 'lecturer') {
+        input.placeholder = 'Search assigned courses';
+    } else {
+        input.placeholder = 'Search my courses';
+    }
+}
+
+function bindCourseSearch() {
+    if (searchBound) return;
+    const input = document.getElementById('course-search');
+    if (!input) return;
+    input.addEventListener('input', () => {
+        if (currentView === 'lecturer') {
+            renderLecturerUnits();
+        } else {
+            renderStudentUnits(currentView);
+        }
+    });
+    searchBound = true;
+}
+
+function showDashboard() {
+    // Hide everything else
+    document.getElementById('landing').style.display = 'none';
+    document.getElementById('auth-container').style.display = 'none';
+    
+    // Show sidebar and logout
     document.getElementById('sidebar').style.display = 'block';
-    document.getElementById('logoutBtn').style.display = 'inline-block';
-    document.getElementById('side-dash').classList.add('active');
+    document.getElementById('logoutBtn').style.display = 'block';
 
-    try {
-        const res = await fetch(`${API}/units/all`);
-        allUnits = await res.json();
-    } catch (err) { console.error("Fetch error:", err); }
+    const role = localStorage.getItem('role');
+    const adminView = document.getElementById('admin-view');
+    const dashboardView = document.getElementById('dashboard-view');
+
+    adminView.style.display = 'none';
+    dashboardView.style.display = 'none';
+
+    configureSidebarByRole(role);
 
     if (role === 'admin') {
-        document.getElementById('admin-view').style.display = 'block';
-        renderAdminTools();
+        adminView.style.display = 'block';
+        configureSearch('hide');
+        loadAdminData();
+    } else if (role === 'lecturer') {
+        dashboardView.style.display = 'block';
+        document.getElementById('dash-title').textContent = 'Assigned Courses';
+        setActiveSidebar('dashboard');
+        currentView = 'lecturer';
+        configureSearch('lecturer');
+        loadLecturerDashboard();
     } else {
-        document.getElementById('dashboard-view').style.display = 'block';
-        document.getElementById('global-search').style.display = 'block';
-        document.getElementById('dash-title').innerText = 
-            role === 'lecturer' ? `Staff Portal: ${userRegNum}` : "My Enrolled Units";
-        renderCurrentView();
+        dashboardView.style.display = 'block';
+        document.getElementById('dash-title').textContent = 'My Courses';
+        setActiveSidebar('dashboard');
+        currentView = 'enrolled';
+        configureSearch('enrolled');
+        loadStudentDashboard();
     }
 }
 
-// --- 4. RENDERING ENGINE ---
-function handleSearch() { renderCurrentView(); }
-
-function renderCurrentView() {
-    const userRegNum = localStorage.getItem('regNum'); 
+function showCatalog() {
     const role = localStorage.getItem('role');
-    const query = document.getElementById('unitSearch').value.toLowerCase();
+    if (role !== 'student') return;
 
-    if (currentActiveView === 'dashboard') {
-        const listDiv = document.getElementById('enrolled-list');
-        const filtered = allUnits.filter(u => {
-            const matches = u.name.toLowerCase().includes(query) || u.code.toLowerCase().includes(query);
-            const isOwner = (role === 'lecturer' && u.lecturerId === userRegNum);
-            const isStudent = (role === 'student' && u.enrolledStudents.includes(userRegNum));
-            return matches && (isOwner || isStudent);
-        });
+    document.getElementById('landing').style.display = 'none';
+    document.getElementById('auth-container').style.display = 'none';
 
-        listDiv.innerHTML = filtered.map(u => `
-            <div class="unit-card" onclick="openCourse('${u._id}')">
-                <div style="height:8px; background:#003366;"></div>
-                <div class="card-body">
-                    <small>${u.code}</small>
-                    <h3>${u.name}</h3>
-                </div>
-            </div>`).join('') || `<p>No units found.</p>`;
+    document.getElementById('sidebar').style.display = 'block';
+    document.getElementById('logoutBtn').style.display = 'block';
+    document.getElementById('admin-view').style.display = 'none';
+    document.getElementById('dashboard-view').style.display = 'block';
 
-    } else if (currentActiveView === 'catalog') {
-        const listDiv = document.getElementById('catalog-list');
-        const filtered = allUnits.filter(u => u.name.toLowerCase().includes(query) || u.code.toLowerCase().includes(query));
-
-        listDiv.innerHTML = filtered.map(u => {
-            const isEnrolled = u.enrolledStudents.includes(userRegNum);
-            let btn = (role === 'student' && !isEnrolled) 
-                ? `<button class="btn-main" onclick="enroll('${u._id}')">Enroll</button>` 
-                : `<button class="btn-main" style="background:#6c757d;" onclick="openCourse('${u._id}')">View</button>`;
-            
-            return `<div class="unit-card"><div class="card-body"><small>${u.code}</small><h3>${u.name}</h3>${btn}</div></div>`;
-        }).join('');
-    }
+    document.getElementById('dash-title').textContent = 'Catalog';
+    setActiveSidebar('catalog');
+    currentView = 'catalog';
+    configureSearch('catalog');
+    loadStudentCatalog();
 }
 
-// --- 5. UNIT DETAILS ---
-function openCourse(unitId) {
-    const unit = allUnits.find(u => u._id === unitId);
-    if (!unit) return;
-    currentOpenUnitId = unitId;
-    hideAll();
-    document.getElementById('course-details-view').style.display = 'block';
-    document.getElementById('cv-name').innerText = unit.name;
-    document.getElementById('cv-code').innerText = unit.code;
-    
-    const role = localStorage.getItem('role');
-    const userRegNum = localStorage.getItem('regNum');
-    const isLecturer = (role === 'lecturer' && unit.lecturerId === userRegNum);
-
-    document.getElementById('lecturer-upload-zone').style.display = isLecturer ? 'block' : 'none';
-
-    document.getElementById('cv-materials').innerHTML = unit.materials.map(m => `
-        <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
-            <span>📄 ${m.name}</span>
-            <div>
-                <a href="${BASE_URL}${m.url}" target="_blank">Download</a>
-            </div>
-        </div>`).join('') || "No materials.";
+// --- 3. Admin Functionality ---
+function getAdminHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    const adminKey = (window.ADMIN_KEY && String(window.ADMIN_KEY).trim()) || localStorage.getItem('adminKey');
+    if (adminKey) headers['x-admin-key'] = adminKey;
+    return headers;
 }
 
-// --- 6. ADMIN USER MANAGEMENT ---
 async function adminCreateUser() {
-    const regNumber = document.getElementById('new-user-id').value;
-    const password = document.getElementById('new-user-pass').value;
+    const regNumber = document.getElementById('new-user-id').value.trim();
+    const password = document.getElementById('new-user-pass').value.trim();
     const role = document.getElementById('new-user-role').value;
-
-    if(!regNumber || !password) return alert("Fill all fields");
+    if (!regNumber || !password) return alert("Enter user ID and password.");
 
     const res = await fetch(`${API}/auth/admin/create-user`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
         body: JSON.stringify({ regNumber, password, role })
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return alert(data.error || "Failed to create user.");
 
-    const data = await res.json();
-    alert(data.message || data.error);
+    alert(data.message || "User created.");
+    document.getElementById('new-user-id').value = '';
+    document.getElementById('new-user-pass').value = '';
+
+    if (role === 'lecturer') {
+        await loadLecturers();
+        renderLecturerOptions();
+    }
 }
 
-async function adminResetPassword() {
-    const regNumber = document.getElementById('reset-user-id').value;
-    const newPassword = document.getElementById('reset-user-pass').value;
-
-    if(!regNumber || !newPassword) return alert("Fill all fields");
-
-    const res = await fetch(`${API}/auth/admin/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ regNumber, newPassword })
-    });
-
-    const data = await res.json();
-    alert(data.message || data.error);
-}
-
-// --- 7. ADMIN COURSE ACTIONS ---
 async function adminCreateUnit() {
-    const code = document.getElementById('admin-unit-code').value;
-    const name = document.getElementById('admin-unit-name').value;
-    await fetch(`${API}/units/create`, {
+    const code = document.getElementById('new-unit-code').value.trim();
+    const name = document.getElementById('new-unit-name').value.trim();
+    if (!code || !name) return alert("Enter unit code and name.");
+
+    const res = await fetch(`${API}/units/create`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: getAdminHeaders(),
         body: JSON.stringify({ code, name })
     });
-    alert("Unit Created!"); 
-    showDashboard();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return alert(data.error || "Failed to create unit.");
+
+    alert("Unit created.");
+    document.getElementById('new-unit-code').value = '';
+    document.getElementById('new-unit-name').value = '';
+
+    await loadUnits();
+    renderUnitOptions();
+    renderUnitsOverview();
 }
 
-async function adminAssignLecturer() {
-    const unitId = document.getElementById('admin-unit-select').value;
-    const lecturerId = document.getElementById('admin-staff-id').value;
-    await fetch(`${API}/units/assign-lecturer`, {
+async function assignLecturer() {
+    const unitId = document.getElementById('assign-unit').value;
+    const lecturerId = document.getElementById('assign-lecturer').value;
+    if (!unitId || !lecturerId) return alert("Select a unit and lecturer.");
+
+    const res = await fetch(`${API}/units/assign-lecturer`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: getAdminHeaders(),
         body: JSON.stringify({ unitId, lecturerId })
     });
-    alert("Lecturer Assigned!"); 
-    showDashboard();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return alert(data.error || "Assignment failed.");
+
+    alert("Lecturer assigned.");
+    await loadUnits();
+    renderUnitOptions();
+    renderUnitsOverview();
 }
 
-// --- 8. MISC ---
-async function handleUpload() {
-    const fileInput = document.getElementById('new-file-input');
-    if (!fileInput.files[0]) return;
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    await fetch(`${API}/files/upload/${currentOpenUnitId}`, { method: 'POST', body: formData });
-    alert("Uploaded!"); showDashboard();
+async function postNews() {
+    const title = document.getElementById('news-title').value.trim();
+    const content = document.getElementById('news-content').value.trim();
+    
+    if (!title || !content) return alert("Please enter both title and details.");
+
+    const res = await fetch(`${API}/news/add`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, content })
+    });
+
+    if (res.ok) {
+        alert("Announcement Published!");
+        document.getElementById('news-title').value = '';
+        document.getElementById('news-content').value = '';
+        loadNews();
+    }
+}
+
+function renderAdminAnnouncements() {
+    const list = document.getElementById('admin-announcements-list');
+    if (!list) return;
+    if (cachedNews.length === 0) {
+        list.innerHTML = '<p>No announcements to manage.</p>';
+        return;
+    }
+    list.innerHTML = cachedNews.map(n => `
+        <div class="info-card" style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <strong>${n.title}</strong><br>
+                <small>${new Date(n.date).toLocaleDateString()}</small>
+            </div>
+            <button onclick="deleteAnnouncement('${n._id}')" style="background:#ff4d4d; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Delete</button>
+        </div>
+    `).join('');
+}
+
+async function deleteAnnouncement(id) {
+    if (!confirm("Delete this post?")) return;
+    const res = await fetch(`${API}/news/${id}`, { method: 'DELETE' });
+    if (res.ok) loadNews();
+}
+
+// --- Admin Data Loaders ---
+async function loadAdminData() {
+    // These functions need your existing Logic for Units and Lecturers
+    await Promise.all([loadUnits(), loadLecturers(), loadNews()]);
+    renderUnitOptions();
+    renderLecturerOptions();
+    renderUnitsOverview();
+}
+
+// --- Shared Data Loaders ---
+async function loadUnits() {
+    try {
+        const res = await fetch(`${API}/units/all`);
+        if (!res.ok) throw new Error('Unit fetch failed');
+        cachedUnits = await res.json();
+    } catch (err) {
+        console.error("Units load failed:", err);
+        cachedUnits = [];
+    }
+}
+
+async function loadLecturers() {
+    try {
+        const res = await fetch(`${API}/auth/admin/lecturers`, {
+            headers: getAdminHeaders()
+        });
+        if (!res.ok) throw new Error('Lecturer fetch failed');
+        cachedLecturers = await res.json();
+    } catch (err) {
+        console.error("Lecturers load failed:", err);
+        cachedLecturers = [];
+    }
+}
+
+function renderUnitOptions() {
+    const unitSelect = document.getElementById('assign-unit');
+    if (!unitSelect) return;
+    if (cachedUnits.length === 0) {
+        unitSelect.innerHTML = '<option value="">No units yet</option>';
+        return;
+    }
+    unitSelect.innerHTML = '<option value="">Select unit</option>' + cachedUnits.map(u => {
+        const status = u.lecturerId ? 'Assigned' : 'Unassigned';
+        return `<option value="${u._id}">${u.code} - ${u.name} (${status})</option>`;
+    }).join('');
+}
+
+function renderLecturerOptions() {
+    const lecturerSelect = document.getElementById('assign-lecturer');
+    if (!lecturerSelect) return;
+    if (cachedLecturers.length === 0) {
+        lecturerSelect.innerHTML = '<option value="">No lecturers yet</option>';
+        return;
+    }
+    lecturerSelect.innerHTML = '<option value="">Select lecturer</option>' + cachedLecturers.map(l => {
+        return `<option value="${l.regNumber}">${l.regNumber}</option>`;
+    }).join('');
+}
+
+function renderUnitsOverview() {
+    const list = document.getElementById('admin-units-list');
+    if (!list) return;
+    if (cachedUnits.length === 0) {
+        list.innerHTML = '<p class="muted">No units created yet.</p>';
+        return;
+    }
+    list.innerHTML = cachedUnits.map(u => `
+        <div class="info-card">
+            <h4>${u.code} - ${u.name}</h4>
+            <p>Lecturer: ${u.lecturerId ? u.lecturerId : 'Unassigned'}</p>
+        </div>
+    `).join('');
+}
+
+// --- Student Catalog / Enroll ---
+function getCurrentUserId() {
+    return localStorage.getItem('userId') || '';
+}
+
+function getCurrentRegNumber() {
+    return localStorage.getItem('regNum') || '';
+}
+
+function isEnrolled(unit) {
+    const list = Array.isArray(unit.enrolledStudents) ? unit.enrolledStudents : [];
+    const userId = getCurrentUserId();
+    const regNumber = getCurrentRegNumber();
+    return (userId && list.includes(userId)) || (regNumber && list.includes(regNumber));
+}
+
+function renderStudentUnits(mode) {
+    const list = document.getElementById('enrolled-list');
+    if (!list) return;
+    const query = getSearchQuery();
+    const filtered = mode === 'enrolled'
+        ? cachedUnits.filter(isEnrolled)
+        : cachedUnits;
+    const filteredByQuery = filtered.filter(u => matchesQuery(u, query));
+
+    if (filteredByQuery.length === 0) {
+        list.innerHTML = mode === 'enrolled'
+            ? '<p class="muted">You have not enrolled in any course yet.</p>'
+            : '<p class="muted">No courses available yet.</p>';
+        return;
+    }
+
+    list.innerHTML = filteredByQuery.map(u => {
+        const courseId = u._id || u.id || u.code;
+        const enrolled = isEnrolled(u);
+        const lecturer = u.lecturerId ? u.lecturerId : 'Not assigned';
+        const actionBtn = enrolled
+            ? `<button class="btn-main btn-danger" onclick="event.stopPropagation(); unenroll('${u._id || u.id || u.code}')">Unenroll</button>`
+            : `<button class="btn-main" onclick="event.stopPropagation(); enroll('${u._id || u.id || u.code}')">Enroll</button>`;
+
+        return `
+            <div class="info-card course-card" onclick="openCourse('${courseId}')">
+                <h4>${u.code} - ${u.name}</h4>
+                <p>Lecturer: ${lecturer}</p>
+                <div class="course-actions">
+                    ${actionBtn}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadStudentDashboard() {
+    await loadUnits();
+    renderStudentUnits('enrolled');
+}
+
+async function loadStudentCatalog() {
+    await loadUnits();
+    renderStudentUnits('catalog');
+}
+
+function isLecturerAssigned(unit) {
+    const lecturerId = String(unit.lecturerId || '').trim();
+    const regNumber = getCurrentRegNumber();
+    const userId = getCurrentUserId();
+    return lecturerId && (lecturerId === regNumber || lecturerId === userId);
+}
+
+function renderLecturerUnits() {
+    const list = document.getElementById('enrolled-list');
+    if (!list) return;
+    const query = getSearchQuery();
+    const assigned = cachedUnits.filter(isLecturerAssigned).filter(u => matchesQuery(u, query));
+
+    if (assigned.length === 0) {
+        list.innerHTML = '<p class="muted">No courses assigned to you yet.</p>';
+        return;
+    }
+
+    list.innerHTML = assigned.map(u => {
+        const courseId = u._id || u.id || u.code;
+        return `
+        <div class="info-card course-card" onclick="openCourse('${courseId}')">
+            <h4>${u.code} - ${u.name}</h4>
+            <p>Lecturer: ${u.lecturerId}</p>
+        </div>
+    `;
+    }).join('');
+}
+
+function openCourse(unitId) {
+    const cleanId = (unitId === undefined || unitId === null) ? '' : String(unitId).trim();
+    if (cleanId) {
+        localStorage.setItem('lastCourseId', cleanId);
+    }
+    window.location.href = `course.html?unitId=${encodeURIComponent(cleanId)}`;
+}
+
+async function loadLecturerDashboard() {
+    await loadUnits();
+    renderLecturerUnits();
 }
 
 async function enroll(unitId) {
-    const userRegNum = localStorage.getItem('regNum');
-    await fetch(`${API}/units/enroll`, {
+    const userId = getCurrentUserId() || getCurrentRegNumber();
+    if (!userId) return alert("Login again to enroll.");
+    const res = await fetch(`${API}/units/enroll`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ userId: userRegNum, unitId })
+        body: JSON.stringify({ userId, unitId })
     });
-    showDashboard();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return alert(data.error || "Enroll failed");
+    await loadUnits();
+    renderStudentUnits(document.getElementById('dash-title').textContent === 'Catalog' ? 'catalog' : 'enrolled');
 }
 
-function showCatalog() { hideAll(); currentActiveView = 'catalog'; document.getElementById('catalog-view').style.display = 'block'; document.getElementById('global-search').style.display = 'block'; document.getElementById('side-catalog').classList.add('active'); renderCurrentView(); }
-function logout() { localStorage.clear(); location.reload(); }
-function renderAdminTools() { 
-    const select = document.getElementById('admin-unit-select');
-    if(select) select.innerHTML = allUnits.map(u => `<option value="${u._id}">${u.code} - ${u.name}</option>`).join(''); 
+async function unenroll(unitId) {
+    const userId = getCurrentUserId() || getCurrentRegNumber();
+    if (!userId) return alert("Login again to unenroll.");
+    const res = await fetch(`${API}/units/unenroll`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ userId, unitId })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return alert(data.error || "Unenroll failed");
+    await loadUnits();
+    renderStudentUnits(document.getElementById('dash-title').textContent === 'Catalog' ? 'catalog' : 'enrolled');
 }
 
-window.onload = () => { 
-    if (localStorage.getItem('userId')) showDashboard(); 
-    else { hideAll(); document.getElementById('auth-container').style.display = 'block'; } 
+function logout() {
+    localStorage.clear();
+    location.reload();
 }
+
+// Start everything
+window.onload = () => {
+    loadNews();
+    bindCourseSearch();
+    if (localStorage.getItem('regNum')) {
+        showDashboard();
+    }
+};

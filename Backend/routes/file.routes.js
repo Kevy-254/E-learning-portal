@@ -1,7 +1,17 @@
 const router = require('express').Router();
 const multer = require('multer');
+const mongoose = require('mongoose');
 const Unit = require('../models/Unit');
 const path = require('path');
+
+function resolveUnitQuery(unitId) {
+    if (!unitId) return null;
+    if (mongoose.Types.ObjectId.isValid(unitId)) {
+        return { _id: unitId };
+    }
+    const safe = String(unitId).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return { code: new RegExp(`^${safe}$`, 'i') };
+}
 
 // Storage Config
 const storage = multer.diskStorage({
@@ -13,6 +23,9 @@ const upload = multer({ storage });
 router.post('/upload/:unitId', upload.single('file'), async (req, res) => {
     try {
         const { unitId } = req.params;
+        const query = resolveUnitQuery(unitId);
+        if (!query) return res.status(400).json({ error: "Unit id required" });
+        if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
         // Force forward slashes and a leading slash for the web
         // This fixes the "uploads\file.docx" issue found in your Compass
@@ -24,9 +37,12 @@ router.post('/upload/:unitId', upload.single('file'), async (req, res) => {
             uploadedAt: new Date()
         };
 
-        await Unit.findByIdAndUpdate(unitId, { 
-            $push: { materials: fileData } 
-        });
+        const updated = await Unit.findOneAndUpdate(
+            query,
+            { $push: { materials: fileData } },
+            { new: true }
+        );
+        if (!updated) return res.status(404).json({ error: "Unit not found" });
 
         res.json({ message: "File uploaded and linked successfully!" });
     } catch (err) {

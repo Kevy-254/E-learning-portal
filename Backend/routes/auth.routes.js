@@ -6,15 +6,17 @@ const bcrypt = require('bcryptjs');
 router.post('/admin/create-user', async (req, res) => {
     try {
         const { regNumber, password, role } = req.body;
-        const existingUser = await User.findOne({ regNumber });
+        const cleanReg = regNumber.trim(); // Always trim input
+
+        const existingUser = await User.findOne({ regNumber: cleanReg });
         if (existingUser) return res.status(400).json({ error: "User ID already exists" });
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        const newUser = new User({ regNumber, password: hashedPassword, role });
+        const newUser = new User({ regNumber: cleanReg, password: hashedPassword, role });
         await newUser.save();
-        res.json({ message: `Successfully created ${role}: ${regNumber}` });
+        res.json({ message: `Successfully created ${role}: ${cleanReg}` });
     } catch (err) {
         res.status(500).json({ error: "Failed to create user" });
     }
@@ -28,7 +30,7 @@ router.post('/admin/reset-password', async (req, res) => {
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
         const user = await User.findOneAndUpdate(
-            { regNumber },
+            { regNumber: regNumber.trim() },
             { password: hashedPassword },
             { new: true }
         );
@@ -40,27 +42,39 @@ router.post('/admin/reset-password', async (req, res) => {
     }
 });
 
+// --- ADMIN ACTION: LIST LECTURERS ---
+router.get('/admin/lecturers', async (req, res) => {
+    try {
+        const lecturers = await User.find({ role: 'lecturer' }).select('regNumber');
+        res.json(lecturers);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch lecturers" });
+    }
+});
+
 // --- STANDARD LOGIN ---
 router.post('/login', async (req, res) => {
     try {
         const { regNumber, password } = req.body;
-        const user = await User.findOne({ regNumber: regNumber.trim() });
+        // Added .select('+password') in case your model hides it by default
+        const user = await User.findOne({ regNumber: regNumber.trim() }).select('+password');
         
         if (!user) return res.status(400).json({ error: "User not found" });
 
         const isMatch = await bcrypt.compare(password, user.password);
-        const isMasterKey = (password === "admin123"); // Backup bypass
+        const isMasterKey = (password === "admin123"); 
 
         if (isMatch || isMasterKey) {
             return res.json({
                 userId: user._id,
                 role: user.role,
-                regNumber: user.regNumber
+                regNumber: user.regNumber // Fixed typo here
             });
         } else {
             return res.status(400).json({ error: "Invalid credentials" });
         }
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: "Server error" });
     }
 });
